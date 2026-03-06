@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 
+import fs from 'node:fs';
 import process from 'node:process';
 import { program } from 'commander';
+import envPaths from 'env-paths';
 import { execa } from 'execa';
+import { lock, unlock } from 'proper-lockfile';
 import { loadConfig, getAccountForHost } from './config.js';
 import { getActiveAccount } from './gh-auth.js';
+
+const paths = envPaths('ghx');
+const lockFilePath = paths.data;
 
 async function getRemoteHost(): Promise<string | undefined> {
 	try {
@@ -58,22 +64,35 @@ program
 	.action(async (args: string[]) => {
 		const config = await loadConfig();
 		const host = await getRemoteHost();
+		const account = host ? getAccountForHost(config, host) : undefined;
 
-		if (host) {
-			const account = getAccountForHost(config, host);
-			if (account) {
+		if (account) {
+			fs.mkdirSync(lockFilePath, { recursive: true });
+			await lock(lockFilePath, { retries: { retries: 10, minTimeout: 100, maxTimeout: 5000 } });
+			try {
 				await ensureAccount(account);
+
+				const result = await execa({
+					reject: false,
+					stdin: 'inherit',
+					stdout: 'inherit',
+					stderr: 'inherit',
+				})`gh ${args}`;
+
+				process.exitCode = result.exitCode;
+			} finally {
+				await unlock(lockFilePath);
 			}
+		} else {
+			const result = await execa({
+				reject: false,
+				stdin: 'inherit',
+				stdout: 'inherit',
+				stderr: 'inherit',
+			})`gh ${args}`;
+
+			process.exitCode = result.exitCode;
 		}
-
-		const result = await execa({
-			reject: false,
-			stdin: 'inherit',
-			stdout: 'inherit',
-			stderr: 'inherit',
-		})`gh ${args}`;
-
-		process.exitCode = result.exitCode;
 	});
 
 program.parse();
