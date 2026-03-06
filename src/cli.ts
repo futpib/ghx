@@ -3,13 +3,11 @@
 import fs from 'node:fs';
 import process from 'node:process';
 import { program } from 'commander';
-import envPaths from 'env-paths';
 import { execa } from 'execa';
 import { lock, unlock } from 'proper-lockfile';
-import { loadConfig, getAccountForHost } from './config.js';
+import { paths, loadConfig, getAccountForHost } from './config.js';
 import { getActiveAccount } from './gh-auth.js';
 
-const paths = envPaths('ghx');
 const lockFilePath = paths.data;
 
 async function getRemoteHost(): Promise<string | undefined> {
@@ -55,13 +53,18 @@ async function ensureAccount(account: string): Promise<void> {
 
 program
 	.name('ghx')
-	.description('gh wrapper')
+	.description('gh wrapper that automatically switches GitHub accounts based on the current repository\'s remote')
+	.helpOption(false)
 	.allowUnknownOption()
 	.allowExcessArguments()
 	.enablePositionalOptions()
 	.passThroughOptions()
 	.argument('[args...]')
 	.action(async (args: string[]) => {
+		if (args.includes('--help') || args.includes('-h')) {
+			program.outputHelp();
+			console.log();
+		}
 		const config = await loadConfig();
 		const host = await getRemoteHost();
 		const account = host ? getAccountForHost(config, host) : undefined;

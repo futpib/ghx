@@ -3,7 +3,7 @@ import path from 'node:path';
 import envPaths from 'env-paths';
 import { z } from 'zod';
 
-const paths = envPaths('ghx', { suffix: '' });
+export const paths = envPaths('ghx', { suffix: '' });
 
 const configSchema = z.object({
 	accounts: z.record(z.string(), z.string()),
