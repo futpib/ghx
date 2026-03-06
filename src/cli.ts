@@ -4,6 +4,7 @@ import process from 'node:process';
 import { program } from 'commander';
 import { execa } from 'execa';
 import { loadConfig, getAccountForHost } from './config.js';
+import { getActiveAccount } from './gh-auth.js';
 
 async function getRemoteHost(): Promise<string | undefined> {
 	try {
@@ -33,6 +34,11 @@ async function getRemoteHost(): Promise<string | undefined> {
 }
 
 async function ensureAccount(account: string): Promise<void> {
+	const active = await getActiveAccount('github.com');
+	if (active === account) {
+		return;
+	}
+
 	await execa({
 		reject: false,
 		stdin: 'inherit',
