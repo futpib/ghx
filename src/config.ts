@@ -24,6 +24,6 @@ export async function loadConfig(): Promise<Config> {
 	return configSchema.parse(JSON.parse(content));
 }
 
-export function getAccountForHost(config: Config, host: string): string | undefined {
-	return config.accounts[host] ?? config.accounts['*'];
+export function getAccountForHost(config: Config, host?: string): string | undefined {
+	return (host ? config.accounts[host] : undefined) ?? config.accounts['*'];
 }

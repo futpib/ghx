@@ -67,7 +67,7 @@ program
 		}
 		const config = await loadConfig();
 		const host = await getRemoteHost();
-		const account = host ? getAccountForHost(config, host) : undefined;
+		const account = getAccountForHost(config, host);
 
 		if (account) {
 			fs.mkdirSync(lockFilePath, { recursive: true });
