@@ -65,6 +65,7 @@ program
 			program.outputHelp();
 			console.log();
 		}
+
 		const config = await loadConfig();
 		const host = await getRemoteHost();
 		const account = getAccountForHost(config, host);
