@@ -8,7 +8,7 @@ const ghPaths = envPaths('gh', { suffix: '' });
 
 const hostsSchema = z.record(z.string(), z.object({
 	user: z.string(),
-}).passthrough());
+}).loose());
 
 export async function getActiveAccount(host: string): Promise<string | undefined> {
 	try {
