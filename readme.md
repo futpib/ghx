@@ -31,7 +31,7 @@ Create a config file at `~/.config/ghx/config.json`:
 }
 ```
 
-The keys are remote hosts (as they appear in your git remote URLs) and the values are the `gh` account names to switch to.
+The keys are remote hosts (as they appear in your git remote URLs) and the values are the `gh` account names to switch to. You can also use `*` as a key to specify a default account for any host not explicitly listed.
 
 ## Concurrency
 
