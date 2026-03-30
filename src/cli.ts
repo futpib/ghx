@@ -10,7 +10,12 @@ import { getActiveAccount } from './gh-auth.js';
 
 const lockFilePath = paths.data;
 
-async function getRemoteHost(): Promise<string | undefined> {
+type Remote = {
+	host: string;
+	repo: string;
+};
+
+async function getRemote(): Promise<Remote | undefined> {
 	try {
 		const result = await execa({ reject: false })`git remote get-url origin`;
 		if (result.exitCode !== 0) {
@@ -19,16 +24,17 @@ async function getRemoteHost(): Promise<string | undefined> {
 
 		const url = result.stdout.trim();
 
-		// Git@github.com-archive:org/repo.git → github.com-archive
-		const sshMatch = /^[^@]+@([^:]+):/.exec(url);
+		// Git@github.com-archive:org/repo.git → host=github.com-archive, repo=org/repo
+		const sshMatch = /^[^@]+@([^:]+):(.+?)(?:\.git)?$/.exec(url);
 		if (sshMatch) {
-			return sshMatch[1];
+			return { host: sshMatch[1], repo: sshMatch[2] };
 		}
 
-		// https://github.com/org/repo.git → github.com
+		// https://github.com/org/repo.git → host=github.com, repo=org/repo
 		try {
 			const parsed = new URL(url);
-			return parsed.hostname;
+			const repo = parsed.pathname.replace(/^\//, '').replace(/\.git$/, '');
+			return { host: parsed.hostname, repo };
 		} catch {}
 
 		return undefined;
@@ -67,8 +73,13 @@ program
 		}
 
 		const config = await loadConfig();
-		const host = await getRemoteHost();
-		const account = getAccountForHost(config, host);
+		const remote = await getRemote();
+		const account = getAccountForHost(config, remote?.host);
+
+		const env: Record<string, string> = {};
+		if (remote && remote.host !== 'github.com') {
+			env.GH_REPO = remote.repo;
+		}
 
 		if (account) {
 			fs.mkdirSync(lockFilePath, { recursive: true });
@@ -81,6 +92,7 @@ program
 					stdin: 'inherit',
 					stdout: 'inherit',
 					stderr: 'inherit',
+					env,
 				})`gh ${args}`;
 
 				process.exitCode = result.exitCode;
@@ -93,6 +105,7 @@ program
 				stdin: 'inherit',
 				stdout: 'inherit',
 				stderr: 'inherit',
+				env,
 			})`gh ${args}`;
 
 			process.exitCode = result.exitCode;
