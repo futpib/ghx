@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
 import { program } from 'commander';
 import { execa } from 'execa';
-import { lock, unlock } from 'proper-lockfile';
 import { paths, loadConfig, getAccountForHost } from './config.js';
+import { acquireShared, releaseShared } from './fs-rwlock.js';
 import { getActiveAccount } from './gh-auth.js';
 
-const lockFilePath = paths.data;
+const lockDirPath = paths.data;
+const statePath = path.join(lockDirPath, 'rwlock-state.json');
 
 type Remote = {
 	host: string;
@@ -82,8 +84,8 @@ program
 		}
 
 		if (account) {
-			fs.mkdirSync(lockFilePath, { recursive: true });
-			await lock(lockFilePath, { retries: { retries: 10, minTimeout: 100, maxTimeout: 5000 } });
+			fs.mkdirSync(lockDirPath, { recursive: true });
+			await acquireShared(lockDirPath, statePath, account);
 			try {
 				await ensureAccount(account);
 
@@ -97,7 +99,7 @@ program
 
 				process.exitCode = result.exitCode;
 			} finally {
-				await unlock(lockFilePath);
+				await releaseShared(lockDirPath, statePath);
 			}
 		} else {
 			const result = await execa({
