@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { lock, unlock } from 'proper-lockfile';
 
-export type RwLockOptions = {
+export type GroupMutexOptions = {
 	staleMs?: number;
 	retries?: number;
 	retryMinTimeout?: number;
@@ -28,7 +28,7 @@ function writeState(statePath: string, state: State): void {
 
 async function withMetaLock<T>(
 	lockDirPath: string,
-	options: RwLockOptions,
+	options: GroupMutexOptions,
 	fn: () => T | Promise<T>,
 ): Promise<T> {
 	await lock(lockDirPath, {
@@ -46,11 +46,11 @@ async function withMetaLock<T>(
 	}
 }
 
-export async function acquireShared(
+export async function acquire(
 	lockDirPath: string,
 	statePath: string,
 	key: string,
-	options: RwLockOptions = {},
+	options: GroupMutexOptions = {},
 ): Promise<void> {
 	const retries = options.retries ?? 10;
 	const retryMinTimeout = options.retryMinTimeout ?? 100;
@@ -74,7 +74,7 @@ export async function acquireShared(
 		}
 
 		if (attempt >= retries) {
-			throw new Error(`Failed to acquire shared lock for key "${key}" after ${retries} retries`);
+			throw new Error(`Failed to acquire group mutex for key "${key}" after ${retries} retries`);
 		}
 
 		const timeout = Math.min(
@@ -88,10 +88,10 @@ export async function acquireShared(
 	}
 }
 
-export async function releaseShared(
+export async function release(
 	lockDirPath: string,
 	statePath: string,
-	options: RwLockOptions = {},
+	options: GroupMutexOptions = {},
 ): Promise<void> {
 	await withMetaLock(lockDirPath, options, () => {
 		const state = readState(statePath);

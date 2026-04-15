@@ -6,11 +6,11 @@ import process from 'node:process';
 import { program } from 'commander';
 import { execa } from 'execa';
 import { paths, loadConfig, getAccountForHost } from './config.js';
-import { acquireShared, releaseShared } from './fs-rwlock.js';
+import { acquire, release } from './fs-group-mutex.js';
 import { getActiveAccount } from './gh-auth.js';
 
 const lockDirPath = paths.data;
-const statePath = path.join(lockDirPath, 'rwlock-state.json');
+const statePath = path.join(lockDirPath, 'group-mutex-state.json');
 
 type Remote = {
 	host: string;
@@ -85,7 +85,7 @@ program
 
 		if (account) {
 			fs.mkdirSync(lockDirPath, { recursive: true });
-			await acquireShared(lockDirPath, statePath, account);
+			await acquire(lockDirPath, statePath, account);
 			try {
 				await ensureAccount(account);
 
@@ -99,7 +99,7 @@ program
 
 				process.exitCode = result.exitCode;
 			} finally {
-				await releaseShared(lockDirPath, statePath);
+				await release(lockDirPath, statePath);
 			}
 		} else {
 			const result = await execa({
