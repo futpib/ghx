@@ -6,11 +6,11 @@ import process from 'node:process';
 import { program } from 'commander';
 import { execa } from 'execa';
 import { paths, loadConfig, getAccountForHost } from './config.js';
-import { acquire, release } from './fs-group-mutex.js';
+import { acquire } from './fs-group-mutex.js';
 import { getActiveAccount } from './gh-auth.js';
 
-const lockDirPath = paths.data;
-const statePath = path.join(lockDirPath, 'group-mutex-state.json');
+const metaLockPath = paths.data;
+const holdersDir = path.join(metaLockPath, 'group-mutex-holders');
 
 type Remote = {
 	host: string;
@@ -84,8 +84,8 @@ program
 		}
 
 		if (account) {
-			fs.mkdirSync(lockDirPath, { recursive: true });
-			await acquire(lockDirPath, statePath, account);
+			fs.mkdirSync(metaLockPath, { recursive: true });
+			const handle = await acquire(metaLockPath, holdersDir, account);
 			try {
 				await ensureAccount(account);
 
@@ -99,7 +99,7 @@ program
 
 				process.exitCode = result.exitCode;
 			} finally {
-				await release(lockDirPath, statePath);
+				await handle.release();
 			}
 		} else {
 			const result = await execa({
